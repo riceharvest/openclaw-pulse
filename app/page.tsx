@@ -7,6 +7,8 @@ import {
 } from 'recharts';
 import { Activity, Cpu, HardDrive, Zap, RefreshCcw, ShieldCheck } from 'lucide-react';
 
+const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+
 export default function Dashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -79,12 +81,10 @@ export default function Dashboard() {
 
   const chartData = (data?.chartData || []).filter((d: any) => {
     if (timeFilter === 'all' || timeFilter === '7d') return true;
-    // For 1h/24h, the daily aggregation in chartData might be too coarse, 
-    // but we'll show the relevant days at least.
     const dTime = new Date(d.date).getTime();
     const now = new Date().setHours(0,0,0,0);
     const diff = now - dTime;
-    return diff <= 86400000 * (timeFilter === '1h' ? 1 : 1); 
+    return diff <= 86400000; 
   });
 
   const handleSort = (key: string) => {
@@ -93,6 +93,12 @@ export default function Dashboard() {
       direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
     }));
   };
+
+  if (loading && !data) return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <RefreshCcw className="animate-spin text-blue-500 w-8 h-8" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 p-8 font-sans">
