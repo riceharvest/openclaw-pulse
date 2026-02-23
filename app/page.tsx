@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
+  const [timeFilter, setTimeFilter] = useState('all'); // 'all', '1h', '24h', '7d'
   const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
 
   const fetchStats = async () => {
@@ -30,10 +31,23 @@ export default function Dashboard() {
   }, []);
 
   const sortedAndFilteredHistory = (data?.history || [])
-    .filter((item: any) => 
-      item.agent.toLowerCase().includes(filter.toLowerCase()) || 
-      item.model.toLowerCase().includes(filter.toLowerCase())
-    )
+    .filter((item: any) => {
+      const matchesText = item.agent.toLowerCase().includes(filter.toLowerCase()) || 
+                         item.model.toLowerCase().includes(filter.toLowerCase());
+      
+      if (!matchesText) return false;
+      if (timeFilter === 'all') return true;
+
+      const itemTime = new Date(item.timestamp).getTime();
+      const now = Date.now();
+      const diff = now - itemTime;
+
+      if (timeFilter === '1h') return diff <= 3600000;
+      if (timeFilter === '24h') return diff <= 86400000;
+      if (timeFilter === '7d') return diff <= 604800000;
+      
+      return true;
+    })
     .sort((a: any, b: any) => {
       if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
       if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -73,6 +87,16 @@ export default function Dashboard() {
           <p className="text-slate-400">Autonomous System Monitoring & Usage Dashboard</p>
         </div>
         <div className="flex items-center gap-3">
+          <select 
+            value={timeFilter}
+            onChange={(e) => setTimeFilter(e.target.value)}
+            className="bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-300"
+          >
+            <option value="all">All Time</option>
+            <option value="1h">Last Hour</option>
+            <option value="24h">Last 24 Hours</option>
+            <option value="7d">Last 7 Days</option>
+          </select>
           <input 
             type="text" 
             placeholder="Filter by agent or model..." 
