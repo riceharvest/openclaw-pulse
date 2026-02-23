@@ -227,7 +227,6 @@ export default function Dashboard() {
     </div>
   );
 }
-}
 
 function StatCard({ title, value, icon }: { title: string, value: string, icon: React.ReactNode }) {
   return (
