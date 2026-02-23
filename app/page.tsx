@@ -30,44 +30,62 @@ export default function Dashboard() {
     fetchStats();
   }, []);
 
-  const sortedAndFilteredHistory = (data?.history || [])
-    .filter((item: any) => {
-      const matchesText = item.agent.toLowerCase().includes(filter.toLowerCase()) || 
-                         item.model.toLowerCase().includes(filter.toLowerCase());
-      
-      if (!matchesText) return false;
-      if (timeFilter === 'all') return true;
+  const filterByTime = (itemTimeStr: string) => {
+    if (timeFilter === 'all') return true;
+    const itemTime = new Date(itemTimeStr).getTime();
+    const now = Date.now();
+    const diff = now - itemTime;
+    if (timeFilter === '1h') return diff <= 3600000;
+    if (timeFilter === '24h') return diff <= 86400000;
+    if (timeFilter === '7d') return diff <= 604800000;
+    return true;
+  };
 
-      const itemTime = new Date(item.timestamp).getTime();
-      const now = Date.now();
-      const diff = now - itemTime;
+  const filteredHistory = (data?.history || []).filter((item: any) => {
+    const matchesText = item.agent.toLowerCase().includes(filter.toLowerCase()) || 
+                       item.model.toLowerCase().includes(filter.toLowerCase());
+    return matchesText && filterByTime(item.timestamp);
+  });
 
-      if (timeFilter === '1h') return diff <= 3600000;
-      if (timeFilter === '24h') return diff <= 86400000;
-      if (timeFilter === '7d') return diff <= 604800000;
-      
-      return true;
-    })
-    .sort((a: any, b: any) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
+  const sortedAndFilteredHistory = [...filteredHistory].sort((a: any, b: any) => {
+    if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+    if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
-  if (loading && !data) return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <RefreshCcw className="animate-spin text-blue-500 w-8 h-8" />
-    </div>
-  );
+  // Calculate aggregate stats based on time filter
+  const aggregates = filteredHistory.reduce((acc: any, curr: any) => {
+    acc.total += curr.total;
+    acc.input += curr.input;
+    acc.output += curr.output;
+    acc.cacheRead += (curr.cacheRead || 0);
+    
+    if (!acc.byModel[curr.model]) {
+      acc.byModel[curr.model] = { total: 0, input: 0, output: 0 };
+    }
+    acc.byModel[curr.model].total += curr.total;
+    acc.byModel[curr.model].input += curr.input;
+    acc.byModel[curr.model].output += curr.output;
+    
+    return acc;
+  }, { total: 0, input: 0, output: 0, cacheRead: 0, byModel: {} });
 
-  const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
-
-  const modelData = Object.entries(data?.byModel || {}).map(([name, stats]: any) => ({
-    name: name.split('/').pop(),
+  const modelData = Object.entries(aggregates.byModel).map(([name, stats]: any) => ({
+    name,
     total: stats.total,
     input: stats.input,
     output: stats.output
   }));
+
+  const chartData = (data?.chartData || []).filter((d: any) => {
+    if (timeFilter === 'all' || timeFilter === '7d') return true;
+    // For 1h/24h, the daily aggregation in chartData might be too coarse, 
+    // but we'll show the relevant days at least.
+    const dTime = new Date(d.date).getTime();
+    const now = new Date().setHours(0,0,0,0);
+    const diff = now - dTime;
+    return diff <= 86400000 * (timeFilter === '1h' ? 1 : 1); 
+  });
 
   const handleSort = (key: string) => {
     setSortConfig(prev => ({
@@ -116,10 +134,10 @@ export default function Dashboard() {
 
       {/* Grid Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        <StatCard title="Total Tokens" value={data?.totalTokens?.toLocaleString()} icon={<Zap className="text-yellow-500" />} />
-        <StatCard title="Prompt (In)" value={data?.totalInput?.toLocaleString()} icon={<Cpu className="text-blue-500" />} />
-        <StatCard title="Response (Out)" value={data?.totalOutput?.toLocaleString()} icon={<Activity className="text-pink-500" />} />
-        <StatCard title="Cache Savings" value={data?.totalCacheRead?.toLocaleString()} icon={<HardDrive className="text-emerald-500" />} />
+        <StatCard title="Total Tokens" value={aggregates.total.toLocaleString()} icon={<Zap className="text-yellow-500" />} />
+        <StatCard title="Prompt (In)" value={aggregates.input.toLocaleString()} icon={<Cpu className="text-blue-500" />} />
+        <StatCard title="Response (Out)" value={aggregates.output.toLocaleString()} icon={<Activity className="text-pink-500" />} />
+        <StatCard title="Cache Savings" value={aggregates.cacheRead.toLocaleString()} icon={<HardDrive className="text-emerald-500" />} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
@@ -128,7 +146,7 @@ export default function Dashboard() {
           <h3 className="text-lg font-semibold mb-6 text-white">Usage History</h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data?.chartData}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
