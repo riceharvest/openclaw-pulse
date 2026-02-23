@@ -120,7 +120,7 @@ export default function Dashboard() {
           </div>
           <div className="mt-4 space-y-2">
             {modelData.map((entry: any, index: number) => (
-              <div key={entry.name} className="flex items-center justify-between text-sm">
+              <div key={`${entry.name}-${index}`} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                   <span className="text-slate-400">{entry.name}</span>
