@@ -65,14 +65,23 @@ export async function GET() {
                 stats.byModel[model].total += total;
                 stats.byModel[model].count += 1;
 
-                // Daily history aggregation (truncated for privacy)
+                // Add detailed entry for raw logs table
+                stats.history.push({
+                  timestamp: entry.timestamp,
+                  agent,
+                  model: model.split('/').pop(),
+                  input,
+                  output,
+                  cacheRead,
+                  total,
+                  action: entry.action || 'message'
+                });
+
+                // Daily history aggregation for chart
                 const date = entry.timestamp.split('T')[0];
-                const histIdx = stats.history.findIndex((h: any) => h.date === date);
-                if (histIdx > -1) {
-                  stats.history[histIdx].tokens += total;
-                } else {
-                  stats.history.push({ date, tokens: total });
-                }
+                if (!stats.daily) stats.daily = {};
+                if (!stats.daily[date]) stats.daily[date] = 0;
+                stats.daily[date] += total;
               }
             }
           } catch (e) {
@@ -88,8 +97,13 @@ export async function GET() {
       }
     }
 
-    // Sort history by date
-    stats.history.sort((a: any, b: any) => a.date.localeCompare(b.date));
+    // Convert daily map to sorted history array for chart
+    stats.chartData = Object.entries(stats.daily || {})
+      .map(([date, tokens]) => ({ date, tokens }))
+      .sort((a: any, b: any) => a.date.localeCompare(b.date));
+
+    // Sort raw history by timestamp descending
+    stats.history.sort((a: any, b: any) => b.timestamp.localeCompare(a.timestamp));
 
     return NextResponse.json(stats);
   } catch (error: any) {
