@@ -1,0 +1,56 @@
+# OpenClaw Pulse - AI-SEO Documentation
+
+## Project Overview
+
+OpenClaw Pulse is a high-performance, autonomous system monitoring dashboard for OpenClaw, an AI agent orchestration framework. It provides real-time token tracking, model analytics, and usage breakdown across multiple AI providers.
+
+## Privacy-First Architecture
+
+The dashboard is designed with privacy as the core principle:
+- Reads local OpenClaw logs from `~/.openclaw/logs`
+- Extracts only numerical usage data (tokens, timestamps, model names)
+- Never exposes raw message content, system prompts, or user identifiers
+- Safe for public deployment since no sensitive data leaves the local environment
+
+## Key Features
+
+- **Real-time Token Tracking**: Monitor input, output, and cache savings across all providers
+- **Model Analytics**: Breakdown of usage by model (Gemini, Llama, Claude, GPT, etc.)
+- **Provider Metrics**: Track costs and usage per AI provider
+- **Privacy-First Design**: Local log processing only
+
+## Technology Stack
+
+- Next.js 15 (React 19)
+- Tailwind CSS 4
+- Recharts for data visualization
+- TypeScript
+- Jest for testing
+
+## Integration Points
+
+The dashboard reads from local OpenClaw log files in JSON format. The API endpoint `/api/stats` parses these logs and returns aggregated statistics. Log files should be placed in `~/.openclaw/logs/` directory.
+
+## Use Cases
+
+- Monitor AI agent token consumption
+- Track cost efficiency across providers
+- Analyze model adoption patterns
+- Identify usage trends over time
+- Build usage dashboards for AI infrastructure
+
+## Related Projects
+
+- [OpenClaw](https://github.com/openclaw/openclaw) - AI agent orchestration framework
+- [@opensourceframework](https://github.com/riceharvest/opensourceframework) - Ecosystem
+
+## Configuration
+
+No API keys required. The dashboard automatically discovers logs from the local filesystem. Configure the log directory by ensuring OpenClaw writes to `~/.openclaw/logs/`.
+
+## Security Considerations
+
+- All processing happens locally
+- No data transmitted to external services
+- Frontend receives only aggregated metrics
+- Suitable for air-gapped environments

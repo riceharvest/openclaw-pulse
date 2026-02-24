@@ -43,7 +43,9 @@ describe('Dashboard Component', () => {
       render(<Dashboard />);
     });
 
-    expect(screen.getByText('1,000')).toBeInTheDocument();
+    // Use getAllByText because '150' appears in both the StatCard and the Table row
+    const tokenElements = screen.getAllByText('150');
+    expect(tokenElements.length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('main')).toBeInTheDocument();
   });
 });

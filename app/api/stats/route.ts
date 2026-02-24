@@ -10,7 +10,17 @@ const OPENCLAW_HOME = path.join(os.homedir(), '.openclaw');
 export async function GET() {
   try {
     const agentsDir = path.join(OPENCLAW_HOME, 'agents');
-    const stats: any = {
+    const stats: {
+      totalTokens: number;
+      totalInput: number;
+      totalOutput: number;
+      totalCacheRead: number;
+      sessions: Array<{ id: string; agent: string; tokens: number }>;
+      byModel: Record<string, { input: number; output: number; total: number; count: number }>;
+      history: Array<{ timestamp: string; agent: string; model: string; input: number; output: number; cacheRead: number; total: number; action: string }>;
+      daily?: Record<string, number>;
+      chartData?: Array<{ date: string; tokens: number }>;
+    } = {
       totalTokens: 0,
       totalInput: 0,
       totalOutput: 0,
@@ -83,10 +93,10 @@ export async function GET() {
                 if (!stats.daily[date]) stats.daily[date] = 0;
                 stats.daily[date] += total;
               }
+              }
+            } catch {
+              // Skip malformed lines
             }
-          } catch (e) {
-            // Skip malformed lines
-          }
         }
 
         stats.sessions.push({
@@ -99,14 +109,15 @@ export async function GET() {
 
     // Convert daily map to sorted history array for chart
     stats.chartData = Object.entries(stats.daily || {})
-      .map(([date, tokens]) => ({ date, tokens }))
-      .sort((a: any, b: any) => a.date.localeCompare(b.date));
+      .map(([date, tokens]) => ({ date, tokens: tokens as number }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     // Sort raw history by timestamp descending
-    stats.history.sort((a: any, b: any) => b.timestamp.localeCompare(a.timestamp));
+    stats.history.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
     return NextResponse.json(stats);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
